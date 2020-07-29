@@ -14,6 +14,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.commons.io.FilenameUtils;
 
 
 public class Application {
@@ -50,7 +51,7 @@ public class Application {
 		
 		for (int i = 0; i < fileStr.length; i++) {
 			File file = new File( fileStr[i]);
-			replacePattern(file);
+			extractSQL(file);
 		}
 		
 		
@@ -277,37 +278,73 @@ public class Application {
 	}
 	
 	private static void extractSQL(File f) {
-
+		int lineNum = 0;
 		try {
 			boolean flag = false;
 			boolean flag2 = false; // check line next to ORA2SYMFO [TODO]
-			File ftemp = new File(f.getAbsolutePath() + "_temp");
+			 
+			String fileNameWithOutExt = FilenameUtils.removeExtension(f.getName());
+			File ftemp = new File("D:\\workspace\\Getti\\#Migration\\VB\\sql\\"+fileNameWithOutExt+".sql");
+			
 			FileReader fr = new FileReader(f);
 			BufferedReader br = new BufferedReader(fr);
 			FileWriter fw = new FileWriter(ftemp);
 			BufferedWriter bw = new BufferedWriter(fw);
 			String line;
-			String lineBK = "";
+			lineNum =0;
+			 
 			while ((line = br.readLine()) != null) {
-				bw.write(line);
-				break;
-			}
-			while ((line = br.readLine()) != null) {
-
+				lineNum+=1;
 				if (!flag2)
 					bw.newLine();
 
  
-				if (  isInsensitiveContains("Public", line) || isInsensitiveContains("Private", line) ){
-					lowercaseCount += 1;
+				if (  (isInsensitiveContains("if", line) || isInsensitiveContains("else", line))  
+						&& line.trim().charAt(0) != '\''  ){
+					bw.write("--"+line);
 				}
 				
-				 
- 
-				else {
+				if (  (isInsensitiveContains("Public", line) || isInsensitiveContains("Private", line)) 
+						&& isInsensitiveContains("function", line) && line.trim().charAt(0) != '\''  ){
+					bw.write(";--"+line);
+				}else
+				if (  (isInsensitiveContains("SQL", line) )  
+						&& ( line.contains("=") || isInsensitiveContains("append", line) )
+						&& line.trim().charAt(0) != '\'' 
+						&& !isInsensitiveContains("dim", line) 
+						&& !isInsensitiveContains("new", line) 
+						&& !isInsensitiveContains(".Length", line)
+						&& !isInsensitiveContains("CommandText", line)){
+					int start = 0;
+					int end = 0;
+					line = line.trim();
+					
+					
+					for (int i = 0; i < line.length(); i++) {
+						start += 1;
+						if (line.charAt(i) == '\"') {
+							break;
+						}
+					}
+					for (int i = line.length() - 1; i >= 0; i--) {
+						end += 1;
+						if (	line.charAt(i) == '\"' 
+								|| ( line.charAt(i) >= 'A' && line.charAt(i) <= 'Z') 
+								|| ( line.charAt(i) >= 'a' && line.charAt(i) <= 'z') ) {
+							break;
+						}
+					}
+					if(!line.trim().isEmpty() && (end < line.length() )) {
+						line = line.substring(start, line.length() - end );
+					}
+					
+					line = line.replaceAll("\"\"", "\"");  						// "" -> "
+					line = line.replaceAll(".[\" ][&].+[&][ \"].", "?"); 		// & parameter &  => ?
+					line = line.replaceAll(".[\" ][&].+", "?");					// & parameter  => ?
+					
 					bw.write(line);
 				}
-				lineBK = line;
+				
 			}
 			if (isLastLineNull(f)) {
 				bw.newLine();
@@ -316,13 +353,14 @@ public class Application {
 			br.close();
 			fw.close();
 			fr.close();
-			f.delete();
-			boolean successful = ftemp.renameTo(f);
+			//boolean successful = ftemp.renameTo(f);
 			if (flag) {
-				System.out.println(successful + ": " + ftemp.getAbsolutePath());
+				System.out.println(ftemp.getAbsolutePath());
 			}
 
 		} catch (Exception e) {
+			System.out.println("File: " + f.getAbsolutePath());
+			System.out.println("Line :" + lineNum );
 			System.out.println("Loi ghi file: " + e);
 		}
 	}
@@ -352,7 +390,7 @@ public class Application {
 				listFilesForFolder(fileEntry);
 			} else {
 				if (getFileExtension(fileEntry).equalsIgnoreCase(".vb")) {
-					replacePattern(fileEntry);
+					extractSQL(fileEntry);
 				}
 
 			}
