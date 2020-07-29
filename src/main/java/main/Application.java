@@ -12,77 +12,202 @@ import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-//import org.apache.poi.hssf.usermodel.HSSFSheet;
-//import org.apache.poi.hssf.usermodel.HSSFWorkbook;
-//import org.apache.poi.ss.usermodel.Cell;
-//import org.apache.poi.ss.usermodel.CellType;
-//import org.apache.poi.ss.usermodel.Row;
 
 
 public class Application {
-	private static int count = 0;
-	final private static String comment = "";
+	private static int lowercaseCount = 0;
+	private static int leftJoinCount = 0;
+	private static int NVLCount = 0;
+	private static int sysDateCount = 0;
+	private static int dualCount = 0;
+	private static int decodeCount = 0;
+
+	//final private static String comment = "'#postgres-cnv(splus)-v5.20 :tool :修正済\n";
+	//final private static String comment = "'#postgres-cnv(splus)-v5.20 :tool :確認済\n";
 	
+	final private static String comment = "'#postgres-cnv(splus)-v5.20 :splus :修正済\n";
+
+
 	public static void main(String[] args) throws IOException {
-		//path folder
-		final File folder = new File("");
+		 
+		String[] folderStr = new String[] {
+				//"D:\\workspace\\Getti\\#Migration\\examplefolder",
+				//"D:\\workspace\\Getti\\#Migration\\VB\\examplefolder"	
+		};
 		
-		//loop file in folder
-		listFilesForFolder(folder);
+		for (int i = 0; i < folderStr.length; i++) {
+			File folder = new File( folderStr[i]);
+			listFilesForFolder(folder);
+		}
 		
-		System.out.println("Number of pattern:" + count);
+		String[] fileStr = new String[] {
+				//"D:\\workspace\\Getti\\#Migration\\examplefile.vb",
+				//"D:\\workspace\\Getti\\#Migration\\examplefile.vb"
+		};
+		
+		
+		for (int i = 0; i < fileStr.length; i++) {
+			File file = new File( fileStr[i]);
+			addComment(file);
+		}
+		
+		
 	}
 
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
 	private static void addComment(File f) {
 
 		try {
+			boolean flag = false;
+			boolean flag2 = false; // check line next to ORA2SYMFO [TODO]
 			File ftemp = new File(f.getAbsolutePath() + "_temp");
 			FileReader fr = new FileReader(f);
 			BufferedReader br = new BufferedReader(fr);
 			FileWriter fw = new FileWriter(ftemp);
 			BufferedWriter bw = new BufferedWriter(fw);
 			String line;
+			String lineBK = "";
 			while ((line = br.readLine()) != null) {
 				bw.write(line);
 				break;
 			}
 			while ((line = br.readLine()) != null) {
-				bw.newLine();
-				
-//				//Upper to lowercase
+
+				if (!flag2)
+					bw.newLine();
+
+//============================================COUNT PATTERNT=================================================================
 //				if ( (line.contains("ＩＤ") || line.contains("ＦＡＸ"))  && (line.contains("\");") || line.contains("\"));")) && !line.contains("//")  ){
-//					bw.write(comment);
-//					count += 1;
+//					lowercaseCount += 1;
 //				}
 				
 //				//(+) left join
 //				if ( line.contains("(+)") && !line.contains("//")  ){
-//					bw.write("comment");
-//					count += 1;
+//					leftJoinCount += 1;
 //				}
 				
 //				//nvl() -> coalesce 
 //				if ( isInsensitiveContains("nvl", line) && !line.contains("//")  ){
-//					bw.write(comment);
-//					count += 1;
+//					NVLCount += 1;
+//				}
+//				//DECODE() -> CASE 
+//				if ( isInsensitiveContains("DECODE", line) && !line.contains("//")  ){
+//					decodeCount += 1;
+//				}
+//============================================COUNT PATTERNT=================================================================				
+				
+				
+//================================TO_NCHAR => TO_CHAR============================================================
+//				if (isInsensitiveContains("to_nchar", line) && line.trim().charAt(0) != '\'') {
+//					String tab = getTab(line);
+//					bw.write(tab+comment);
+//					bw.write(tab + "'" + line.trim() + "\n");
+//					line = line.replace("to_nchar", "TO_CHAR");
+//					line = line.replace("TO_NCHAR", "TO_CHAR");
+//					bw.write(line);
+//					flag = true;
 //				}
 				
 				
-				bw.write(line);
+//==============================================REGEXP_SUBSTR ===================================================
+//				if (isInsensitiveContains("CASE WHEN REGEXP_SUBSTR(", line) && line.trim().charAt(0) != '\'') {
+//					String tab = getTab(line);
+//					// bw.write(tab+comment);
+//					bw.write(tab + "'" + line.trim() + "\n");
+//
+//					Pattern pattern = Pattern.compile("(?<=CASE WHEN REGEXP_SUBSTR\\()[^)]*(?=\\))");
+//					Matcher matcher = pattern.matcher(line);
+//					String value[];
+//					if (matcher.find()) {
+//						value = matcher.group(0).split(",");
+//						String rep = value[0] + " SIMILAR TO " + value[1];
+//						line = line.replaceAll("(REGEXP_SUBSTR\\([^)]*\\))", rep);
+//					}
+//
+//					bw.write(line);
+//
+//					flag = true;
+//				}
+
+//===================================2 BYTE TO 1 BYTE ===================================================
+				if (line.contains("ＩＤ") && (line.contains("ppendFormat") || line.contains("ppend") || line.contains("=") ) && line.trim().charAt(0) != '\'') {
+					String tab = getTab(line);
+					bw.write(tab+comment);
+					bw.write(tab + "'" + line.trim() + "\n");
+					 
+					line = line.replace("ＩＤ", "ｉｄ");
+					bw.write(line);
+					flag = true;
+				}else
+				if (line.contains("ＦＡＸ") && (line.contains("ppendFormat") || line.contains("ppend") || line.contains("=") ) && line.trim().charAt(0) != '\'') {
+					String tab = getTab(line);
+					bw.write(tab+comment);
+					bw.write(tab + "'" + line.trim() + "\n");
+					 
+					line = line.replace("ＦＡＸ", "ｆａｘ");
+					bw.write(line);
+					flag = true;
+				}else
+				if (line.contains("ＩＰ") && (line.contains("ppendFormat") || line.contains("ppend") || line.contains("=") ) && line.trim().charAt(0) != '\'') {
+					String tab = getTab(line);
+					bw.write(tab+comment);
+					bw.write(tab + "'" + line.trim() + "\n");
+					 
+					line = line.replace("ＩＰ", "ｉｐ");
+					bw.write(line);
+					flag = true;
+				}else
+				if (line.contains("ＥＤＹ") && (line.contains("ppendFormat") || line.contains("ppend") || line.contains("=") ) && line.trim().charAt(0) != '\'') {
+					String tab = getTab(line);
+					bw.write(tab+comment);
+					bw.write(tab + "'" + line.trim() + "\n");
+					 
+					line = line.replace("ＥＤＹ", "ｅｄｙ");
+					bw.write(line);
+					flag = true;
+				}else
+				if (line.contains("ＳＵＩＣＡ") && (line.contains("ppendFormat") || line.contains("ppend") || line.contains("=") ) && line.trim().charAt(0) != '\'') {
+					String tab = getTab(line);
+					bw.write(tab+comment);
+					bw.write(tab + "'" + line.trim() + "\n");
+					 
+					line = line.replace("ＳＵＩＣＡ", "ｓｕｉｃａ");
+					bw.write(line);
+					flag = true;
+				}else
+					if (line.contains("ＰＡＳＵＭＯ") && (line.contains("ppendFormat") || line.contains("ppend") || line.contains("=") ) && line.trim().charAt(0) != '\'') {
+						String tab = getTab(line);
+						bw.write(tab+comment);
+						bw.write(tab + "'" + line.trim() + "\n");
+						 
+						line = line.replace("ＰＡＳＵＭＯ", "ｐａｓｕｍｏ");
+						bw.write(line);
+						flag = true;
+					}
+				
+//=================================================================================================================
+
+//=================================REPLACE CUSTOMER'S COMMENT TO CONFIRM===========================================
+
+//				if(line.contains("' ##ORA2SYMFO [TODO]") && line.contains("\"REGEXP_SUBSTR\"")){
+//					String tab = getTab(lineBK);
+//					bw.write(tab+comment);
+//					flag2 = true;
+//				}else if(line.contains("' ##ORA2SYMFO ヒント") && flag2){
+//					 
+//				}else 
+//				if(!line.contains("' ##ORA2SYMFO ヒント")){
+//					flag2 = false;
+//					bw.write(line);
+//				}
+
+//=================================REPLACE CUSTOMER'S COMMENT TO CONFIRM===========================================
+
+				else {
+					bw.write(line);
+				}
+				lineBK = line;
 			}
 			if (isLastLineNull(f)) {
 				bw.newLine();
@@ -93,11 +218,25 @@ public class Application {
 			fr.close();
 			f.delete();
 			boolean successful = ftemp.renameTo(f);
-			System.out.println(successful + ": " +ftemp.getName());
+			if (flag) {
+				System.out.println(successful + ": " + ftemp.getAbsolutePath());
+			}
 
 		} catch (Exception e) {
 			System.out.println("Loi ghi file: " + e);
 		}
+	}
+
+	private static String getTab(String line) {
+		String tab = new String();
+		for (int i = 0; i < line.length(); i++) {
+			if (line.charAt(i) == '\t' || line.charAt(i) == ' ') {
+				tab += line.charAt(i);
+			} else {
+				break;
+			}
+		}
+		return tab;
 	}
 
 	private static boolean isInsensitiveContains(String wantedStr, String source) {
@@ -111,7 +250,7 @@ public class Application {
 			if (fileEntry.isDirectory()) {
 				listFilesForFolder(fileEntry);
 			} else {
-				if (getFileExtension(fileEntry).equalsIgnoreCase(".java")) {
+				if (getFileExtension(fileEntry).equalsIgnoreCase(".vb")) {
 					addComment(fileEntry);
 				}
 
@@ -131,85 +270,27 @@ public class Application {
 		}
 		return extension;
 	}
-	
-	private static boolean isLastLineNull (File filename){
+
+	private static boolean isLastLineNull(File filename) {
 		boolean rs = false;
 		try {
 			RandomAccessFile randomAccessFile = new RandomAccessFile(filename, "r");
 			byte b;
-			long length = randomAccessFile.length() ;
+			long length = randomAccessFile.length();
 			if (length != 0) {
-					length -= 1;
-			        randomAccessFile.seek(length);
-			        b = randomAccessFile.readByte();
-			        if(b == 10) {
-			        	rs = true;
-			        }
-			        randomAccessFile.close();
+				length -= 1;
+				randomAccessFile.seek(length);
+				b = randomAccessFile.readByte();
+				if (b == 10) {
+					rs = true;
+				}
+				randomAccessFile.close();
 			}
-			
+
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 		return rs;
 	}
-	
-//	private static void createExcel() throws IOException {
-//		HSSFWorkbook workbook = new HSSFWorkbook();
-//        HSSFSheet sheet = workbook.createSheet("Employees sheet");
-//        
-//        int rownum = 0;
-//        Cell cell;
-//        Row row;
-//        
-//        row = sheet.createRow(rownum);
-//        cell = row.createCell(0, CellType.STRING);
-//        cell.setCellValue("PROJECT");
-//        
-//        cell = row.createCell(1, CellType.STRING);
-//        cell.setCellValue("FUNCTION");
-//        
-//        cell = row.createCell(2, CellType.STRING);
-//        cell.setCellValue("FILE");
-//        
-//        cell = row.createCell(3, CellType.STRING);
-//        cell.setCellValue("PIC");
-//        
-//        cell = row.createCell(4, CellType.STRING);
-//        cell.setCellValue("TEST");
-//        
-//        cell = row.createCell(5, CellType.STRING);
-//        cell.setCellValue("REVIEW");
-//        
-//     // Data
-//        for (Employee emp : list) {
-//            rownum++;
-//            row = sheet.createRow(rownum);
-// 
-//            // EmpNo (A)
-//            cell = row.createCell(0, CellType.STRING);
-//            cell.setCellValue(emp.getEmpNo());
-//            // EmpName (B)
-//            cell = row.createCell(1, CellType.STRING);
-//            cell.setCellValue(emp.getEmpName());
-//            // Salary (C)
-//            cell = row.createCell(2, CellType.STRING);
-//            cell.setCellValue(emp.getSalary());
-//            // Grade (D)
-//            cell = row.createCell(3, CellType.STRING);
-//            cell.setCellValue(emp.getGrade());
-//            // Bonus (E)
-//            String formula = "0.1*C" + (rownum + 1) + "*D" + (rownum + 1);
-//            cell = row.createCell(4, CellType.FORMULA);
-//            cell.setCellFormula(formula);
-//        }
-//        
-//        
-//        File file = new File("C:/Users/thanhbinh truong/Documents/Project/Getti/employee.xls");
-//        file.getParentFile().mkdirs();
-//        FileOutputStream outFile = new FileOutputStream(file);
-//        workbook.write(outFile);
-//        System.out.println("Created file: " + file.getAbsolutePath());
-//        
-//	}
+
 }
