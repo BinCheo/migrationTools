@@ -50,13 +50,21 @@ public class Application {
 		
 		for (int i = 0; i < fileStr.length; i++) {
 			File file = new File( fileStr[i]);
-			addComment(file);
+			replacePattern(file);
 		}
 		
 		
+		System.out.println("テーブル名、カラム名が小文字の寄せられる / :" + lowercaseCount);
+		System.out.println("外部結合演算子(+) :" + leftJoinCount);
+		System.out.println("NVL function:" + NVLCount);
+		System.out.println("sysdate function:" + sysDateCount);
+		System.out.println("DUAL table:" + dualCount);
+		System.out.println("Decode function:" + decodeCount);
+
+		
 	}
 
-	private static void addComment(File f) {
+	private static void replacePattern(File f) {
 
 		try {
 			boolean flag = false;
@@ -76,28 +84,7 @@ public class Application {
 
 				if (!flag2)
 					bw.newLine();
-
-//============================================COUNT PATTERNT=================================================================
-//				if ( (line.contains("ＩＤ") || line.contains("ＦＡＸ"))  && (line.contains("\");") || line.contains("\"));")) && !line.contains("//")  ){
-//					lowercaseCount += 1;
-//				}
-				
-//				//(+) left join
-//				if ( line.contains("(+)") && !line.contains("//")  ){
-//					leftJoinCount += 1;
-//				}
-				
-//				//nvl() -> coalesce 
-//				if ( isInsensitiveContains("nvl", line) && !line.contains("//")  ){
-//					NVLCount += 1;
-//				}
-//				//DECODE() -> CASE 
-//				if ( isInsensitiveContains("DECODE", line) && !line.contains("//")  ){
-//					decodeCount += 1;
-//				}
-//============================================COUNT PATTERNT=================================================================				
-				
-				
+			
 //================================TO_NCHAR => TO_CHAR============================================================
 //				if (isInsensitiveContains("to_nchar", line) && line.trim().charAt(0) != '\'') {
 //					String tab = getTab(line);
@@ -190,7 +177,7 @@ public class Application {
 
 //=================================REPLACE CUSTOMER'S COMMENT TO CONFIRM===========================================
 
-//				if(line.contains("' ##ORA2SYMFO [TODO]") && line.contains("\"REGEXP_SUBSTR\"")){
+//				if(line.contains("' ##ORA2SYMFO [TODO]") && line.contains("\"LPAD\"")){   
 //					String tab = getTab(lineBK);
 //					bw.write(tab+comment);
 //					flag2 = true;
@@ -201,7 +188,6 @@ public class Application {
 //					flag2 = false;
 //					bw.write(line);
 //				}
-
 //=================================REPLACE CUSTOMER'S COMMENT TO CONFIRM===========================================
 
 				else {
@@ -227,6 +213,121 @@ public class Application {
 		}
 	}
 
+	private static void countPattern(File f) {
+
+		try {
+			boolean flag = false;
+			boolean flag2 = false; // check line next to ORA2SYMFO [TODO]
+			File ftemp = new File(f.getAbsolutePath() + "_temp");
+			FileReader fr = new FileReader(f);
+			BufferedReader br = new BufferedReader(fr);
+			FileWriter fw = new FileWriter(ftemp);
+			BufferedWriter bw = new BufferedWriter(fw);
+			String line;
+			String lineBK = "";
+			while ((line = br.readLine()) != null) {
+				bw.write(line);
+				break;
+			}
+			while ((line = br.readLine()) != null) {
+
+				if (!flag2)
+					bw.newLine();
+
+//============================================COUNT PATTERNT=================================================================
+				if ( (line.contains("ＩＤ") || line.contains("ＦＡＸ"))  && (line.contains("\");") || line.contains("\"));")) && !line.contains("//")  ){
+					lowercaseCount += 1;
+				}
+				
+				//(+) left join
+				if ( line.contains("(+)") && !line.contains("//")  ){
+					leftJoinCount += 1;
+				}
+				
+				//nvl() -> coalesce 
+				if ( isInsensitiveContains("nvl", line) && !line.contains("//")  ){
+					NVLCount += 1;
+				}
+				//DECODE() -> CASE 
+				if ( isInsensitiveContains("DECODE", line) && !line.contains("//")  ){
+					decodeCount += 1;
+				}
+//============================================COUNT PATTERNT=================================================================				
+				else {
+					bw.write(line);
+				}
+				lineBK = line;
+			}
+			if (isLastLineNull(f)) {
+				bw.newLine();
+			}
+			bw.close();
+			br.close();
+			fw.close();
+			fr.close();
+			f.delete();
+			boolean successful = ftemp.renameTo(f);
+			if (flag) {
+				System.out.println(successful + ": " + ftemp.getAbsolutePath());
+			}
+
+		} catch (Exception e) {
+			System.out.println("Loi ghi file: " + e);
+		}
+	}
+	
+	private static void extractSQL(File f) {
+
+		try {
+			boolean flag = false;
+			boolean flag2 = false; // check line next to ORA2SYMFO [TODO]
+			File ftemp = new File(f.getAbsolutePath() + "_temp");
+			FileReader fr = new FileReader(f);
+			BufferedReader br = new BufferedReader(fr);
+			FileWriter fw = new FileWriter(ftemp);
+			BufferedWriter bw = new BufferedWriter(fw);
+			String line;
+			String lineBK = "";
+			while ((line = br.readLine()) != null) {
+				bw.write(line);
+				break;
+			}
+			while ((line = br.readLine()) != null) {
+
+				if (!flag2)
+					bw.newLine();
+
+ 
+				if (  isInsensitiveContains("Public", line) || isInsensitiveContains("Private", line) ){
+					lowercaseCount += 1;
+				}
+				
+				 
+ 
+				else {
+					bw.write(line);
+				}
+				lineBK = line;
+			}
+			if (isLastLineNull(f)) {
+				bw.newLine();
+			}
+			bw.close();
+			br.close();
+			fw.close();
+			fr.close();
+			f.delete();
+			boolean successful = ftemp.renameTo(f);
+			if (flag) {
+				System.out.println(successful + ": " + ftemp.getAbsolutePath());
+			}
+
+		} catch (Exception e) {
+			System.out.println("Loi ghi file: " + e);
+		}
+	}
+	
+	
 	private static String getTab(String line) {
 		String tab = new String();
 		for (int i = 0; i < line.length(); i++) {
@@ -251,7 +352,7 @@ public class Application {
 				listFilesForFolder(fileEntry);
 			} else {
 				if (getFileExtension(fileEntry).equalsIgnoreCase(".vb")) {
-					addComment(fileEntry);
+					replacePattern(fileEntry);
 				}
 
 			}
